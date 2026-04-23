@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic MP3 Downloader - Suno</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Orbitron', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+        }
+
+        /* Fondo estrellado animado con canvas */
+        canvas#starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* Nebulosa morada semi-transparente */
+        .nebula {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle at center, rgba(138, 43, 226, 0.15), transparent 70%);
+            border-radius: 50%;
+            filter: blur(40px);
+            z-index: 1;
+        }
+        .nebula.top {
+            top: -20%;
+            left: 10%;
+        }
+        .nebula.bottom {
+            bottom: -20%;
+            right: 10%;
+            background: radial-gradient(circle at center, rgba(180, 70, 255, 0.12), transparent 70%);
+        }
+
+        /* Contenedor principal */
+        .container {
+            position: relative;
+            z-index: 10;
+            background: rgba(10, 10, 20, 0.7);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(138, 43, 226, 0.4);
+            border-radius: 20px;
+            padding: 2.5rem 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(138, 43, 226, 0.5), inset 0 0 30px rgba(138, 43, 226, 0.1);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #ffffff, #d4b0ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 20px rgba(138, 43, 226, 0.7);
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.7rem;
+            color: #b492ff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-top: -1rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            text-align: left;
+        }
+
+        label {
+            font-size: 0.7rem;
+            color: #ccc;
+            letter-spacing: 1px;
+            margin-left: 5px;
+        }
+
+        input {
+            background: rgba(20, 20, 35, 0.8);
+            border: 1px solid rgba(138, 43, 226, 0.5);
+            border-radius: 10px;
+            padding: 0.9rem 1rem;
+            font-size: 0.9rem;
+            color: #fff;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.5px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            border-color: #b47fff;
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.6);
+            background: rgba(30, 30, 50, 0.8);
+        }
+
+        input::placeholder {
+            color: #666;
+            font-size: 0.75rem;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #6c1b9e, #9b4dff);
+            border: none;
+            border-radius: 50px;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(155, 77, 255, 0.6);
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+        }
+
+        .btn-download:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0 35px rgba(180, 100, 255, 0.9);
+        }
+
+        .btn-download:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .btn-download svg {
+            width: 1.2rem;
+            height: 1.2rem;
+            fill: currentColor;
+        }
+
+        #status {
+            min-height: 1.5rem;
+            font-size: 0.85rem;
+            color: #bebeff;
+            text-shadow: 0 0 5px #7b5eff;
+            letter-spacing: 0.5px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer {
+            font-size: 0.6rem;
+            color: #555;
+            position: relative;
+            z-index: 10;
+            margin-top: -1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Nebulosas decorativas -->
+    <div class="nebula top"></div>
+    <div class="nebula bottom"></div>
+
+    <!-- Lienzo de estrellas -->
+    <canvas id="starfield"></canvas>
+
+    <!-- Interfaz principal -->
+    <div class="container">
+        <h1>🚀 SUNO DOWNLOADER</h1>
+        <p class="subtitle">extracción estelar de mp3</p>
+
+        <div class="input-group">
+            <label>🔗 ENLACE DE LA CANCIÓN</label>
+            <input type="text" id="songUrl" placeholder="https://suno.com/song/...">
+        </div>
+
+        <div class="input-group">
+            <label>🎵 NOMBRE DEL ARCHIVO (sin extensión)</label>
+            <input type="text" id="fileName" placeholder="mi-cancion-estelar">
+        </div>
+
+        <button class="btn-download" id="downloadBtn">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 14l-4-4h2.5V7h3v5H15l-4 4z"/></svg>
+            DESCARGAR MP3
+        </button>
+
+        <div id="status"></div>
+    </div>
+    <div class="footer">🌌 conector estelar v1.0 · github pages</div>
+
+    <!-- Lamejs para conversión a MP3 -->
+    <script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+
+    <script>
+        (function() {
+            // -------- ESTRELLAS ANIMADAS ----------
+            const canvas = document.getElementById('starfield');
+            const ctx = canvas.getContext('2d');
+            let stars = [];
+            const numStars = 200;
+
+            function initStars() {
+                stars = [];
+                for (let i = 0; i < numStars; i++) {
+                    stars.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        radius: Math.random() * 2 + 0.5,
+                        alpha: Math.random(),
+                        deltaAlpha: (Math.random() - 0.5) * 0.005,
+                        speed: Math.random() * 0.3 + 0.1
+                    });
+                }
+            }
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                initStars();
+            }
+
+            function drawStars() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                stars.forEach(s => {
+                    ctx.beginPath();
+                    ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+                    ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Parpadeo
+                    s.alpha += s.deltaAlpha;
+                    if (s.alpha > 1 || s.alpha < 0.2) s.deltaAlpha *= -1;
+
+                    // Movimiento lento hacia abajo
+                    s.y += s.speed;
+                    if (s.y > canvas.height + 5) {
+                        s.y = -5;
+                        s.x = Math.random() * canvas.width;
+                    }
+                });
+                requestAnimationFrame(drawStars);
+            }
+
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            drawStars();
+
+            // -------- LÓGICA DE DESCARGA ----------
+            const downloadBtn = document.getElementById('downloadBtn');
+            const songUrlInput = document.getElementById('songUrl');
+            const fileNameInput = document.getElementById('fileName');
+            const statusDiv = document.getElementById('status');
+
+            downloadBtn.addEventListener('click', async () => {
+                const songUrl = songUrlInput.value.trim();
+                const customName = fileNameInput.value.trim() || 'suno-descarga';
+
+                if (!songUrl) {
+                    showStatus('⚠️ Introduce el enlace de la canción', '#ff6b6b');
+                    return;
+                }
+
+                // Extraer ID de la canción (UUID)
+                let songId;
+                try {
+                    const urlObj = new URL(songUrl);
+                    const pathParts = urlObj.pathname.split('/');
+                    songId = pathParts[pathParts.length - 1];
+                    // Validación básica de UUID
+                    if (!songId || songId.length < 20) throw new Error('ID no válido');
+                } catch (e) {
+                    showStatus('❌ Enlace de Suno no válido', '#ff6b6b');
+                    return;
+                }
+
+                // Construir URL del audio .m4a
+                const audioUrl = `https://cdn1.suno.ai/${songId}.m4a`;
+                console.log('Descargando desde:', audioUrl);
+
+                // Deshabilitar botón, mostrar progreso
+                downloadBtn.disabled = true;
+                downloadBtn.innerHTML = '<span class="loading-spinner"></span> PROCESANDO';
+                statusDiv.innerHTML = '';
+
+                try {
+                    showStatus('🌐 Obteniendo audio de Suno...', '#bebeff');
+
+                    // Fetch del archivo M4A
+                    const response = await fetch(audioUrl, { mode: 'cors' });
+                    if (!response.ok) throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
+
+                    const arrayBuffer = await response.arrayBuffer();
+                    showStatus('🔊 Decodificando audio...', '#bebeff');
+
+                    // Decodificar con Web Audio API
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                    showStatus('🔄 Convirtiendo a MP3 (320 kbps)...', '#bebeff');
+
+                    // Codificar a MP3 con lamejs
+                    const mp3Blob = encodeMP3(audioBuffer);
+                    const downloadUrl = URL.createObjectURL(mp3Blob);
+
+                    // Forzar descarga
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `${customName}.mp3`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+
+                    showStatus('✅ ¡Descarga completada! Disfruta tu música.', '#9bff9b');
+                    downloadBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 14l-4-4h2.5V7h3v5H15l-4 4z"/></svg> DESCARGAR MP3';
+                } catch (error) {
+                    console.error(error);
+                    showStatus(`⚠️ Error: ${error.message}`, '#ff6b6b');
+                    downloadBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1 14l-4-4h2.5V7h3v5H15l-4 4z"/></svg> DESCARGAR MP3';
+                } finally {
+                    downloadBtn.disabled = false;
+                }
+            });
+
+            function showStatus(message, color) {
+                statusDiv.innerHTML = message;
+                statusDiv.style.color = color;
+            }
+
+            function encodeMP3(audioBuffer) {
+                const channels = audioBuffer.numberOfChannels;
+                const sampleRate = audioBuffer.sampleRate;
+                const bitrate = 320;
+                const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, bitrate);
+
+                const left = audioBuffer.getChannelData(0);
+                const right = channels > 1 ? audioBuffer.getChannelData(1) : null;
+                const blockSize = 1152;
+                const mp3Data = [];
+
+                for (let i = 0; i < left.length; i += blockSize) {
+                    const leftChunk = left.subarray(i, i + blockSize);
+                    const rightChunk = right ? right.subarray(i, i + blockSize) : null;
+                    const mp3buf = mp3encoder.encodeBuffer(
+                        floatTo16BitPCM(leftChunk),
+                        rightChunk ? floatTo16BitPCM(rightChunk) : null
+                    );
+                    if (mp3buf.length > 0) {
+                        mp3Data.push(mp3buf);
+                    }
+                }
+
+                const lastBuf = mp3encoder.flush();
+                if (lastBuf.length > 0) {
+                    mp3Data.push(lastBuf);
+                }
+
+                return new Blob(mp3Data, { type: 'audio/mpeg' });
+            }
+
+            function floatTo16BitPCM(float32Array) {
+                const int16 = new Int16Array(float32Array.length);
+                for (let i = 0; i < float32Array.length; i++) {
+                    let s = Math.max(-1, Math.min(1, float32Array[i]));
+                    int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                return int16;
+            }
+        })();
+    </script>
+</body>
+</html>
